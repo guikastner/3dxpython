@@ -1,2 +1,5 @@
 # Ignore apenas o arquivo passwords.py
 passwords.py
+eif_v1.py
+credentials_v1.py
+webservices_v1.py
