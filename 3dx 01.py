@@ -14,53 +14,39 @@ session = requests.Session()
 
 # Obtem o login ticket
 url = f"{passport}/login?action=get_auth_params"
-print('Requesting login ticket...')
-response = session.get(url, verify=True)
+print("Requesting login ticket...")
+response = session.get(url, headers={"Accept": "application/json"}, verify=True)
 
 if response.status_code == 200:
-    data = json.loads(response.text)
-    login_ticket = str(data['lt'])
+    data = response.json()
+    login_ticket = data.get("lt")
     print("Login ticket obtido:", login_ticket)
 
-    # Codifica os parâmetros
+    # Realiza autenticação no CAS
     username_enc = quote(username, encoding="utf-8")
     password_enc = quote(password, encoding="utf-8")
-
-    # Cria a string de dados para a requisição POST
-    post_data_str = f"lt={login_ticket}&username={username_enc}&password={password_enc}"
-
-    # Define os cabeçalhos da requisição
+    service_enc = quote(space, encoding="utf-8")  # Codifica o serviço
+    post_data_str = f"lt={login_ticket}&username={username_enc}&password={password_enc}&service={service_enc}"
     headers = {
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
+        "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8"
     }
-
-    # URL para autenticação no CAS
     auth_url = f"{passport}/login"
     print("Realizando autenticação no CAS...")
-    auth_response = session.post(auth_url, data=post_data_str, headers=headers)
+    auth_response = session.post(auth_url, data=post_data_str, headers=headers, allow_redirects=False)
 
-    if auth_response.status_code == 200:
-        # Verifica se há sucesso na autenticação
-        print("Autenticação no CAS bem-sucedida. Conectando ao serviço...")
+    if auth_response.status_code == 302:
+        # Verifica o cabeçalho Location para o redirecionamento
+        redirect_url = auth_response.headers.get("Location")
+        print("Redirecionado para:", redirect_url)
 
-        # Codifica o URL do serviço TargetService (Space)
-        target_service_enc = quote(space, encoding="utf-8")
-
-        # URL para autenticar no serviço específico (Space)
-        service_url = f"{passport}/login?service={target_service_enc}"
-        service_response = session.get(service_url, headers=headers)
-
-        # Verifica a resposta do serviço
-        if service_response.status_code == 200:
-            last_redirect_url = service_response.url  # URL final após redirecionamento
-            if "ticket=" in last_redirect_url:
-                print("Conexão com o serviço Space bem-sucedida!")
-                print("Ticket recebido:", last_redirect_url.split("ticket=")[-1])
-            else:
-                print("Falha ao conectar ao serviço Space. Verifique as configurações.")
+        if "ticket=" in redirect_url:
+            print("Conexão com o serviço Space bem-sucedida!")
+            print("Ticket no redirecionamento:", redirect_url.split("ticket=")[-1])
         else:
-            print(f"Erro ao conectar ao serviço Space. Código de status: {service_response.status_code}")
+            print("Redirecionado, mas sem ticket de serviço. Verifique a configuração do CAS e do serviço.")
     else:
         print(f"Erro ao autenticar no CAS. Código de status: {auth_response.status_code}")
+        print("Detalhes:", auth_response.text)
 else:
     print(f"Erro ao obter login ticket. Código de status: {response.status_code}")
+    print("Detalhes:", response.text)
