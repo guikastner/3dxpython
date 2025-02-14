@@ -8,7 +8,7 @@ username = passwords.nuser
 password = passwords.npassword
 passport_url = passwords.npassport
 space_url = passwords.nspace
-tenant = 'R1132100724361'
+tenant = passwords.ntenant
 
 # Your role, company, collab space
 ROLE = 'VPLMProjectLeader'
